@@ -226,30 +226,16 @@
             display: none;
             margin-bottom: 30px;
         }
-        /*.sentence {*/
-        /*    font-size: 18px;*/
-        /*    margin-bottom: 20px;*/
-        /*    text-align: left !important;*/
-        /*    font-weight: bold;*/
-        /*    line-height: 1.5;*/
-        /*}*/
         .sentence {
             font-size: 18px;
             margin-bottom: 20px;
-            text-align: left !important;  /* 加强：强制左对齐 */
-            font-weight: bold;
-            line-height: 1.5;
-        }
-        .sentence {
-            font-size: 18px;
-            margin-bottom: 20px;
-            text-align: left !important;  /* 保持左对齐，但不影响子span */
+            text-align: left !important;
             font-weight: bold;
             line-height: 1.5;
         }
         .sentence p {
             margin: 0 0 10px 0;
-            text-indent: 2em !important;  /* 首行缩进 */
+            text-indent: 2em !important;
             text-align: left !important;
         }
         .sentence .indent {
@@ -259,14 +245,13 @@
         .blank {
             background-color: #fff3cd;
             border: 1px solid #ffeaa7;
-            padding: 2px 8px;  /* 修复：padding左右均匀（原5px可能偏） */
+            padding: 2px 8px;
             border-radius: 3px;
             min-width: 100px;
             display: inline-block;
-            text-align: center !important;  /* 修复：!important 强制覆盖继承 */
+            text-align: center !important;
             cursor: pointer;
-            line-height: 1.2;  /* 新增：确保单行文本垂直居中 */
-
+            line-height: 1.2;
         }
         .fill-options {
             display: flex;
@@ -311,12 +296,14 @@
             <span id="star1">☆</span>
             <span id="star2">☆</span>
             <span id="star3">☆</span>
+            <span id="star4">☆</span>
         </div>
         <h1>蚕桑小管家 AI 网页游戏</h1>
         <div class="main-buttons">
             <button class="task-button" onclick="startTask(1)">任务1: 桑叶检验</button>
             <button class="task-button" onclick="startTask(2)">任务2: 蚕病判断</button>
             <button class="task-button" onclick="startTask(3)">任务3: 蚕茧筛选</button>
+            <button class="task-button" onclick="startTask(4)">任务4: 蚕龄判断</button>
         </div>
     </div>
     <!-- 任务容器 (Quiz for 1&2) -->
@@ -357,7 +344,7 @@
             </div>
         </div>
     </div>
-    <!-- Drag Drop 容器 (for 3) -->
+    <!-- Drag Drop 容器 (for 3&4) -->
     <div id="dragDropContainer" class="drag-drop-container">
         <div class="task-header">
             <h2 id="drag-title"></h2>
@@ -420,7 +407,7 @@
         let textBlanks = {}; // 存储文字填充状态 {1: text, 2: text, 3: text}
         let fillOrder = []; // 记录点击顺序 [1,2,3]
         let selectedOptions = []; // 已选择的选项索引
-        let completedTasks = [false, false, false]; // 跟踪任务完成状态
+        let completedTasks = [false, false, false, false]; // 跟踪任务完成状态
         // 任务配置
         const taskConfigs = {
             1: { // 桑叶验收
@@ -502,10 +489,28 @@
                     yes: "photo/3-3.png",
                     no: "photo/3-4.png"
                 }
+            },
+            4: { // 蚕龄判断 - 仅问题2拖拽
+                title: "任务4: 蚕龄判断",
+                skeleton: "photo/3.png",
+                components: [
+                    "photo/4-1.png",
+                    "photo/4-5.png",
+                    "photo/4-2.png",
+                    "photo/4-6.png",
+                    "photo/4-4.png",
+                    "photo/4-3.png",
+                ],
+                correctMapping: {
+                    input: "photo/4-1.png",
+                    judgment: "photo/4-2.png",
+                    yes: "photo/4-3.png",
+                    no: "photo/4-4.png"
+                }
             }
         };
         function updateStars() {
-            const starIds = ['star1', 'star2', 'star3'];
+            const starIds = ['star1', 'star2', 'star3', 'star4'];
             starIds.forEach((id, index) => {
                 const star = document.getElementById(id);
                 if (completedTasks[index]) {
@@ -534,6 +539,11 @@
                 document.getElementById('taskContainer').style.display = 'none';
                 document.getElementById('dragDropContainer').style.display = 'block';
                 setupTask3(config);
+            } else if (taskId === 4) {
+                // 任务4: 仅拖拽
+                document.getElementById('taskContainer').style.display = 'none';
+                document.getElementById('dragDropContainer').style.display = 'block';
+                setupTask4(config);
             }
         }
         function nextScenario() {
@@ -561,9 +571,12 @@
             document.getElementById('mainPage').style.display = 'block';
             if (currentTask <= 2) {
                 resetAll();
-            } else {
+            } else if (currentTask === 3) {
                 resetTask3();
+            } else if (currentTask === 4) {
+                resetDragDrop();
             }
+            window.removeEventListener('resize', adjustZones);
         }
         function resetAll() {
             availableScenarios = [];
@@ -664,6 +677,38 @@
             resetDragDrop();
             window.addEventListener('resize', adjustZones);
         }
+        // 任务4专用设置
+        function setupTask4(config) {
+            document.getElementById('drag-title').textContent = config.title;
+            // 隐藏文字填充
+            document.getElementById('textFillSection').style.display = 'none';
+            // 显示拖拽
+            document.getElementById('dragSection').style.display = 'block';
+            // 设置骨架图
+            document.getElementById('skeleton').src = config.skeleton;
+            const list = document.getElementById('components-list');
+            list.innerHTML = '';
+            config.components.forEach((src, index) => {
+                const img = document.createElement('img');
+                img.src = src;
+                img.dataset.originalSrc = src;
+                img.draggable = true;
+                img.id = `comp4_${index}`;
+                img.ondragstart = drag;
+                img.onerror = () => { img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2NjYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Y2a5a6aPC90ZXh0Pjwvc3ZnPg=='; };
+                list.appendChild(img);
+            });
+            currentCorrect = config.correctMapping;
+            const zones = ['input-zone', 'judgment-zone', 'yes-zone', 'no-zone'];
+            zones.forEach(id => {
+                const zone = document.getElementById(id);
+                zone.ondragover = allowDrop;
+                zone.ondrop = drop;
+            });
+            resetDragDrop();
+            window.addEventListener('resize', adjustZones);
+            adjustZones();
+        }
         // 文字填充函数 - 点击选项填入下一个空白
         function selectOption(optIndex) {
             if (selectedOptions.includes(optIndex)) return;
@@ -673,13 +718,35 @@
             const blank = document.getElementById(`blank${nextBlankNum}`);
             blank.textContent = optionText;
             blank.style.backgroundColor = '#add8e6';
-            blank.style.textAlign = 'center';  /* 修复：JS显式设置居中，覆盖任何继承 */
+            blank.style.textAlign = 'center';
             textBlanks[nextBlankNum] = optionText;
             fillOrder.push(optIndex);
             selectedOptions.push(optIndex);
             document.getElementById(`option${optIndex}`).disabled = true;
+            // 添加双击撤回事件
+            blank.ondblclick = function(e) {
+                e.stopPropagation();
+                resetSingleBlank(nextBlankNum);
+            };
             if (fillOrder.length === 3) {
                 document.getElementById('checkFillBtn').disabled = false;
+            }
+        }
+        function resetSingleBlank(num) {
+            const blank = document.getElementById(`blank${num}`);
+            const idx = num - 1;
+            if (idx >= fillOrder.length) return;
+            const optIndex = fillOrder[idx];
+            fillOrder.splice(idx, 1);
+            const selIdx = selectedOptions.indexOf(optIndex);
+            if (selIdx > -1) selectedOptions.splice(selIdx, 1);
+            document.getElementById(`option${optIndex}`).disabled = false;
+            blank.textContent = `[空白${num}]`;
+            blank.style.backgroundColor = '#fff3cd';
+            blank.removeAttribute('ondblclick');
+            textBlanks[num] = undefined;
+            if (fillOrder.length < 3) {
+                document.getElementById('checkFillBtn').disabled = true;
             }
         }
         function checkTextFill() {
@@ -720,6 +787,7 @@
                 const blank = document.getElementById(`blank${i}`);
                 blank.textContent = `[空白${i}]`;
                 blank.style.backgroundColor = '#fff3cd';
+                blank.removeAttribute('ondblclick');
             }
             textBlanks = {};
             fillOrder = [];
@@ -758,7 +826,22 @@
                 dragged.style.height = '100%';
                 dragged.style.objectFit = 'contain';
                 zone.appendChild(dragged);
+                // 添加双击撤回事件
+                dragged.ondblclick = function(e) {
+                    e.stopPropagation();
+                    removeFromZone(dragged);
+                };
             }
+        }
+        function removeFromZone(img) {
+            const zone = img.parentElement;
+            zone.removeChild(img);
+            img.style.width = '';
+            img.style.height = '';
+            img.style.objectFit = '';
+            img.removeAttribute('ondblclick');
+            const list = document.getElementById('components-list');
+            list.appendChild(img);
         }
         function checkCompletion() {
             const zones = {
@@ -775,9 +858,9 @@
             });
             const feedbackEl = document.getElementById('drag-feedback');
             if (isCorrect) {
-                completedTasks[2] = true;
+                completedTasks[currentTask - 1] = true;
                 updateStars();
-                feedbackEl.textContent = '正确！问题2完成。任务完成！';
+                feedbackEl.textContent = '正确！问题完成。任务完成！';
                 feedbackEl.className = 'feedback correct';
                 feedbackEl.style.display = 'block';
                 setTimeout(backToMain, 2000);
@@ -795,9 +878,10 @@
                 const zone = document.getElementById(zoneId);
                 while (zone.firstChild) {
                     const img = zone.firstChild;
-                    img.style.width = '';  // 修复：移除内联宽度，让CSS控制
+                    img.style.width = '';
                     img.style.height = 'auto';
                     img.style.objectFit = '';
+                    img.removeAttribute('ondblclick');
                     list.appendChild(img);
                 }
             });
@@ -848,4 +932,3 @@
 </body>
 
 </html>
-
